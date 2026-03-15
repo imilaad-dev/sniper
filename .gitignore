@@ -1,0 +1,5 @@
+data/state.json
+data/trades.jsonl
+data/sniper.log
+__pycache__/
+*.pyc
