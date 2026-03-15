@@ -2,7 +2,7 @@
 
 ## What it does
 
-Buys contracts trading at **$0.98+** on Polymarket **5-minute, 15-minute, and hourly** crypto markets in the **final seconds** before expiry. At these odds the outcome is essentially decided — price just hasn't settled yet. Profit: ~$0.01-0.02 per share per trade, near-zero fees, ~98%+ win rate.
+Buys contracts trading at **$0.97+** on Polymarket **5-minute, 15-minute, and hourly** crypto markets in the **final seconds** before expiry. At these odds the outcome is essentially decided — price just hasn't settled yet. Profit: ~$0.01-0.03 per share per trade, near-zero fees, ~97%+ win rate.
 
 Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the same wallet, VPN, and Telegram bot.
 
@@ -17,7 +17,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 ## How it works
 
 1. **Scan** (every 3 seconds): Query Gamma API for active 5m/15m/1h markets across all 7 assets (BTC, ETH, SOL, XRP, DOGE, BNB, HYPE)
-2. **Filter**: Find any side (YES or NO) priced at >= `min_odds` (0.98)
+2. **Filter**: Find any side (YES or NO) priced at >= `min_odds` (0.97)
 3. **Time gate**: Only buy in the last `max_seconds_left` (15s) to `min_seconds_left` (2s) before market expiry
 4. **Buy**: Place GTC limit order at market price, wait up to 5s for fill
 5. **Resolve**: Wait for market to settle, redeem winning shares for $1.00 each
@@ -25,7 +25,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 
 ### Why it works
 
-- At 0.98+ odds with <15 seconds to expiry, the crypto price has already moved decisively
+- At 0.97+ odds with <15 seconds to expiry, the crypto price has already moved decisively
 - The market just hasn't fully priced it in yet (CLOB latency, thin liquidity at extremes)
 - Polymarket taker fee at 0.98-0.99 is **< $0.001 per $5 stake** (essentially zero)
 - You're not predicting anything — you're farming the settlement lag

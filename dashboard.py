@@ -538,7 +538,7 @@ async function refresh() {
 
     const rb = document.getElementById('recentBody');
     rb.innerHTML = (d.recent || []).map(function(r) {
-      const won = r.pnl >= 0;
+      const won = r.pnl > 0;
       const cls = won ? 'green' : 'red';
       const badge = won ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
       return '<tr>' +

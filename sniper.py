@@ -1,14 +1,14 @@
 #!/opt/polybot/venv/bin/python3
 """
-sniper.py — 99¢ Contract Sniper Bot
-Buys contracts at $0.99 in the final seconds of 5-min crypto markets.
-Profit: ~$0.01/share per trade, near-zero fees, ~99%+ win rate.
+sniper.py — 97¢+ Contract Sniper Bot
+Buys contracts at $0.97+ in the final seconds of 5m/15m/1h crypto markets.
+Profit: ~$0.01-0.03/share per trade, near-zero fees, ~97%+ win rate.
 Risk: rare reversal in final seconds = full stake loss.
 
 Strategy:
-  - Scan all 5-min markets every 3 seconds
-  - Find any side (YES/NO) priced at >= 0.99
-  - Only buy in the last N seconds before expiry (default 15s)
+  - Scan all 5m/15m/1h markets every 3 seconds
+  - Find any side (YES/NO) priced at >= min_odds (default 0.97)
+  - Only buy in the last N seconds before expiry (default 2-15s)
   - Quick fill timeout (5s) — if not filled, cancel and move on
   - Wait for resolution, redeem winning shares
 """
@@ -217,7 +217,9 @@ def main():
                     state["pnl_usdc"] = round(state["pnl_usdc"] + pnl, 4)
                     if won:
                         state["total_wins"] += 1
-                        redeem_positions(privkey, pos["market_id"])
+                        if not redeem_positions(privkey, pos["market_id"]):
+                            log.warning("Redeem failed for %s — queuing for retry", pos["trade_id"])
+                            state.setdefault("pending_redemptions", []).append(pos["market_id"])
                     else:
                         state["total_losses"] += 1
 
@@ -268,6 +270,10 @@ def main():
                             _log_trade({
                                 "type": "OUTCOME", "trade_id": pos["trade_id"],
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "asset": pos.get("asset", "?"),
+                                "side": pos.get("side", "?"),
+                                "odds": pos.get("odds", 0),
+                                "shares": pos.get("shares", 0),
                                 "result": "STALE", "pnl_usdc": -stake,
                             })
                             continue
@@ -297,7 +303,6 @@ def main():
                 continue
 
             stake = cfg.get("stake_per_bet", 5.0)
-            spent_this_cycle = 0.0
             locked = sum(p.get("stake_usdc", 0) for p in still_open)
             available = state["bankroll_usdc"] - locked
             if available < stake:
@@ -381,12 +386,15 @@ def main():
                 STOP_EVENT.wait(LOOP_SECONDS)
                 continue
 
-            # Respect max_open: only take as many targets as we have slots
+            # Respect max_open AND available balance — don't fire more orders
+            # than we can actually afford (parallel orders all draw from same balance)
             slots_available = max_open - len(still_open)
-            if slots_available <= 0:
+            affordable = int(available / stake) if stake > 0 else 0
+            max_targets = min(slots_available, affordable)
+            if max_targets <= 0:
                 STOP_EVENT.wait(LOOP_SECONDS)
                 continue
-            targets = targets[:slots_available]
+            targets = targets[:max_targets]
 
             # Fire all orders in parallel
             from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -416,7 +424,7 @@ def main():
                         continue
 
                     if result.success:
-                        trade_id = f"snipe_{int(time.time()*1000)}"
+                        trade_id = f"snipe_{int(time.time()*1000)}_{threading.get_ident() % 10000}"
                         pos_entry = {
                             "trade_id": trade_id,
                             "market_id": mkt.condition_id,

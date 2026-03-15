@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-03-15 — Fix 4 bugs + inconsistencies from full audit
+
+### What changed
+- **`sniper.py`**: **BUG FIX (HIGH)** — Failed redemptions were silently dropped. `redeem_positions()` return value was ignored; if redemption failed, the market_id was never added to `pending_redemptions`, leaving USDC.e tokens unredeemed on-chain forever. Now queues failed redemptions for retry.
+- **`sniper.py`**: **BUG FIX (MEDIUM)** — Parallel orders could overspend available balance. The `spent_this_cycle` variable was dead code (initialized but never used). If 4 slots were open and available balance was $5, the bot would fire 4×$5=$20 in parallel orders. Now caps `max_targets` to `min(slots_available, int(available / stake))`.
+- **`sniper.py`**: **BUG FIX (LOW)** — Trade ID collision in parallel orders. `snipe_{ms_timestamp}` could collide when two threads call `time.time()` in the same millisecond. Added `threading.get_ident() % 10000` suffix for uniqueness.
+- **`sniper.py`**: **BUG FIX (LOW)** — Stale force-close OUTCOME log entry was missing `asset`, `side`, `odds`, `shares` fields. Dashboard showed `?` for these trades. Now includes all standard OUTCOME fields.
+- **`sniper.py`**: Updated docstring from "99¢/0.99" to "97¢+/0.97" to match actual config.
+- **`dashboard.py`**: **FIX** — Win badge showed green for PnL=0.00 (e.g. cancelled orders). Changed `pnl >= 0` to `pnl > 0`.
+- **`INTRO.md`**: Fixed body text saying "0.98+" when config is 0.97. Synced all references: strategy description, filter step, "why it works" section.
+
+---
+
+## 2026-03-15 — Fix parallel order thread-safety bug
+
+### Why
+All parallel snipe orders were failing with `PolyApiException[status_code=None, error_message=Request exception!]`. Root cause: `py_clob_client` shares one HTTP session internally and is not thread-safe. When `ThreadPoolExecutor` fired multiple `create_order`/`post_order` calls concurrently, they corrupted each other's connections.
+
+### What changed
+- **`client.py`**: Added `_order_lock` (threading.Lock) to serialize all CLOB API calls (`create_order`, `post_order`, `get_order`, `cancel`). Orders are still dispatched in parallel threads, but the actual API calls are serialized to avoid session corruption. Each call is ~100ms so serialization doesn't meaningfully delay the snipe window.
+
+---
+
 ## 2026-03-15 — Lower min_odds to 0.97
 
 ### Why
