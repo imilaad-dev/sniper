@@ -181,8 +181,8 @@ def main():
     _assets_h = cfg.get("assets_hourly", _assets)
     log.info("Assets: %s | Hourly: %s | Timeframes: %s | Min odds: %.2f | Window: %d-%ds",
              _assets, _assets_h, _tfs,
-             cfg.get("min_odds", 0.99),
-             cfg.get("min_seconds_left", 3),
+             cfg.get("min_odds", 0.97),
+             cfg.get("min_seconds_left", 2),
              cfg.get("max_seconds_left", 15))
 
     _notify(
@@ -318,9 +318,9 @@ def main():
 
             # ── 4. Scan for snipeable markets ─────────────────────────────
             assets = cfg.get("assets", ["btc", "eth", "sol", "xrp"])
-            min_odds = cfg.get("min_odds", 0.99)
+            min_odds = cfg.get("min_odds", 0.97)
             max_secs = cfg.get("max_seconds_left", 15)
-            min_secs = cfg.get("min_seconds_left", 3)
+            min_secs = cfg.get("min_seconds_left", 2)
             fill_timeout = cfg.get("fill_timeout_seconds", 5)
 
             timeframes = cfg.get("timeframes", ["5m", "15m", "1h"])
@@ -346,7 +346,7 @@ def main():
 
             # Build list of snipeable targets (filter first, buy in parallel)
             now = datetime.now(timezone.utc)
-            _max_pct = cfg.get("max_stake_pct", 0.15)
+            _max_pct = cfg.get("max_stake_pct", 0.30)
             max_stake = state["bankroll_usdc"] * _max_pct
             targets = []  # (mkt, side, odds, token_id, stake, secs_left)
 

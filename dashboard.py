@@ -9,7 +9,7 @@ import json
 import logging
 from collections import deque
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from flask import Flask, jsonify, render_template_string
 
 log = logging.getLogger(__name__)
@@ -43,7 +43,6 @@ def _load_trades() -> list:
 def api_stats():
     state = _load_state()
     trades = _load_trades()
-    bets = [t for t in trades if t.get("type") == "BET"]
     outcomes = [t for t in trades if t.get("type") == "OUTCOME"]
 
     now = datetime.now(timezone.utc)

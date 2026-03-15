@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-03-15 — Fix remaining inconsistencies from re-audit
+
+### What changed
+- **`INTRO.md`**: Title still said "99¢" → "97¢+". Files table still said "0.98+" → "0.97+".
+- **`sniper.py`**: Fallback defaults mismatched config — `min_odds` 0.99→0.97, `min_seconds_left` 3→2, `max_stake_pct` 0.15→0.30. Only matter if config.json is missing, but should be consistent.
+- **`client.py`**: `place_buy` docstring still referenced "0.99" — made generic.
+- **`dashboard.py`**: Removed dead `bets` variable (computed but never used), removed unused `timedelta` import.
+
+---
+
 ## 2026-03-15 — Fix 4 bugs + inconsistencies from full audit
 
 ### What changed

@@ -242,6 +242,7 @@ import threading
 _cached_client = None
 _cached_client_key = None
 _client_lock = threading.Lock()
+_order_lock = threading.Lock()  # serialize CLOB API calls — py_clob_client is not thread-safe
 
 def _get_client(private_key: str):
     global _cached_client, _cached_client_key
@@ -268,7 +269,7 @@ def place_buy(
     price: float = 0.99,
     fill_timeout: int = 5,
 ) -> BuyResult:
-    """Place a quick GTC limit buy at 0.99, wait for fill, cancel if not."""
+    """Place a quick GTC limit buy, wait for fill, cancel if not."""
     try:
         from py_clob_client.clob_types import OrderArgs, OrderType
         from py_clob_client.order_builder.constants import BUY
@@ -281,19 +282,21 @@ def place_buy(
             amount_usdc = round(shares * limit_price, 2)
 
         order_args = OrderArgs(token_id=token_id, price=limit_price, size=shares, side=BUY)
-        signed = client.create_order(order_args)
-        try:
-            resp = client.post_order(signed, OrderType.GTC)
-        except Exception as e:
-            err_str = str(e).lower()
-            if "401" in err_str or "403" in err_str or "unauthorized" in err_str:
-                global _cached_client
-                _cached_client = None
-                client = _get_client(private_key)
-                signed = client.create_order(order_args)
+        # Serialize CLOB calls — py_clob_client shares one HTTP session, not thread-safe
+        with _order_lock:
+            signed = client.create_order(order_args)
+            try:
                 resp = client.post_order(signed, OrderType.GTC)
-            else:
-                raise
+            except Exception as e:
+                err_str = str(e).lower()
+                if "401" in err_str or "403" in err_str or "unauthorized" in err_str:
+                    global _cached_client
+                    _cached_client = None
+                    client = _get_client(private_key)
+                    signed = client.create_order(order_args)
+                    resp = client.post_order(signed, OrderType.GTC)
+                else:
+                    raise
 
         order_id = resp.get("orderID") or resp.get("id") or ""
         if not order_id:
@@ -307,7 +310,8 @@ def place_buy(
         for _ in range(n_checks):
             time.sleep(2)
             try:
-                order = client.get_order(order_id)
+                with _order_lock:
+                    order = client.get_order(order_id)
                 status = order.get("status", "").upper() if isinstance(order, dict) else ""
                 matched = float(order.get("size_matched", 0)) if isinstance(order, dict) else 0
                 if status == "MATCHED" or matched > 0:
@@ -320,13 +324,15 @@ def place_buy(
 
         if not filled:
             try:
-                client.cancel(order_id)
+                with _order_lock:
+                    client.cancel(order_id)
             except Exception:
                 pass
             # Re-check after cancel
             try:
                 time.sleep(1)
-                order = client.get_order(order_id)
+                with _order_lock:
+                    order = client.get_order(order_id)
                 matched = float(order.get("size_matched", 0)) if isinstance(order, dict) else 0
                 if matched > 0:
                     filled = True

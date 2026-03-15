@@ -1,4 +1,4 @@
-# Sniper Bot — 99¢ Contract Farmer
+# Sniper Bot — 97¢+ Contract Farmer
 
 ## What it does
 
@@ -42,7 +42,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 
 | File | What it does |
 |---|---|
-| `sniper.py` | Main loop. Scans every 3s, finds 0.98+ contracts near expiry, buys, resolves, redeems. Telegram alerts on losses + every 10 wins |
+| `sniper.py` | Main loop. Scans every 3s, finds 0.97+ contracts near expiry, buys, resolves, redeems. Telegram alerts on losses + every 10 wins |
 | `client.py` | Stripped-down Polymarket CLOB client. Market discovery (slug-based), live price fetch, GTC limit buy, result check, on-chain redemption |
 | `dashboard.py` | Single-page Flask dashboard on port 5001. Stats, recent trades table, live log tail. Auto-refreshes every 5s |
 | `config.json` | Runtime config: min_odds, stake, time window, assets, max_open |
