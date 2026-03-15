@@ -4,11 +4,12 @@
 
 ---
 
-## 2026-03-15 — Fix 4 more stale defaults found in third audit pass
+## 2026-03-15 — Fix stale fallback defaults found in third audit pass
 
 ### What changed
 - **`sniper.py`**: `cfg.get('min_odds', 0.99)` in Telegram startup message — single-quote version escaped previous replace_all. Fixed to 0.97.
 - **`sniper.py`**: `cfg.get("max_open", 2)` fallback was 2, config/INTRO say 7. Fixed to 7.
+- **`sniper.py`**: `cfg.get("assets", ...)` fallback had 4 assets, config/INTRO say 7. Added doge, bnb, hype to fallback.
 - **`client.py`**: `find_snipeable_markets` signature defaults — `min_odds=0.99` → `0.97`, `max_secs=30` → `15`. Only matters if called without args, but should be consistent.
 
 ---

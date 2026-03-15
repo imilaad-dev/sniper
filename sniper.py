@@ -177,7 +177,7 @@ def main():
 
     log.info("=== Sniper Bot Starting ===")
     _tfs = cfg.get("timeframes", ["5m", "15m", "1h"])
-    _assets = cfg.get("assets", ["btc", "eth", "sol", "xrp"])
+    _assets = cfg.get("assets", ["btc", "eth", "sol", "xrp", "doge", "bnb", "hype"])
     _assets_h = cfg.get("assets_hourly", _assets)
     log.info("Assets: %s | Hourly: %s | Timeframes: %s | Min odds: %.2f | Window: %d-%ds",
              _assets, _assets_h, _tfs,
@@ -317,7 +317,7 @@ def main():
                 continue
 
             # ── 4. Scan for snipeable markets ─────────────────────────────
-            assets = cfg.get("assets", ["btc", "eth", "sol", "xrp"])
+            assets = cfg.get("assets", ["btc", "eth", "sol", "xrp", "doge", "bnb", "hype"])
             min_odds = cfg.get("min_odds", 0.97)
             max_secs = cfg.get("max_seconds_left", 15)
             min_secs = cfg.get("min_seconds_left", 2)
