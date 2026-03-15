@@ -368,11 +368,12 @@ def main():
                 if secs_left > max_secs or secs_left < min_secs:
                     continue
 
-                # Find the side at >= min_odds
+                # Find the side at >= min_odds and < max_odds
+                max_odds = cfg.get("max_odds", 0.99)
                 candidates = []
-                if mkt.yes_price >= min_odds:
+                if min_odds <= mkt.yes_price <= max_odds:
                     candidates.append(("YES", mkt.yes_price, mkt.yes_token_id))
-                if mkt.no_price >= min_odds:
+                if min_odds <= mkt.no_price <= max_odds:
                     candidates.append(("NO", mkt.no_price, mkt.no_token_id))
 
                 if not candidates:

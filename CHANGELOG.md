@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-03-15 — Add max_odds filter to stop sniping at 1.00
+
+### Why
+Log review showed ~93% miss rate. Many attempts were at odds=1.00 where profit is $0 and `limit_price = min(price, 0.99)` means you bid 0.99 on a 1.00 market — guaranteed miss, wasting API calls.
+
+### What changed
+- **`sniper.py`**: Candidate filter now checks `min_odds <= price <= max_odds` instead of just `>= min_odds`. Odds at 1.00 (and anything above max_odds) are skipped.
+- **`config.json`**: Added `max_odds: 0.99`.
+- **`INTRO.md`**: Added `max_odds` to config reference table.
+
+---
+
 ## 2026-03-15 — Dashboard: add fill rate, timeframe, avg profit, pending redemptions
 
 ### Why
