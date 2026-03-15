@@ -342,7 +342,10 @@ def main():
                                  _m.asset.upper(), _side, _best, _sl, _m.question[:40])
                     except Exception:
                         pass
-            open_assets = {p.get("asset", "").lower() for p in still_open}
+            # Track (asset, end_date) pairs — allows cross-timeframe bets
+            # (DOGE 5m + DOGE 1h OK) but blocks same-market duplicates
+            open_keys = {(p.get("asset", "").lower(), p.get("end_date_iso", ""))
+                         for p in still_open}
 
             # Build list of snipeable targets (filter first, buy in parallel)
             now = datetime.now(timezone.utc)
@@ -351,7 +354,7 @@ def main():
             targets = []  # (mkt, side, odds, token_id, stake, secs_left)
 
             for mkt in markets:
-                if mkt.asset in open_assets:
+                if (mkt.asset, mkt.end_date_iso) in open_keys:
                     continue
 
                 try:
@@ -381,7 +384,7 @@ def main():
                     continue
 
                 targets.append((mkt, side, odds, token_id, actual_stake, secs_left))
-                open_assets.add(mkt.asset)  # prevent double-betting same asset from different timeframes
+                open_keys.add((mkt.asset, mkt.end_date_iso))  # prevent same-market dups, allow cross-timeframe
 
             if not targets:
                 STOP_EVENT.wait(LOOP_SECONDS)

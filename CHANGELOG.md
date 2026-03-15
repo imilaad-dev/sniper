@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-03-15 — Allow cross-timeframe bets for same asset
+
+### Why
+Previous fix blocked ALL duplicate assets, which prevented cross-timeframe betting entirely. If DOGE had an open 5m bet, DOGE 15m and 1h were blocked too — missing most multi-timeframe volume.
+
+### What changed
+- **`sniper.py`**: Changed dedup key from `asset` to `(asset, end_date_iso)`. Now DOGE 5m + DOGE 1h can both be bought (different markets), but two bets on the exact same market are still blocked.
+
+---
+
 ## 2026-03-15 — Fix double-betting same asset from different timeframes
 
 ### Why
