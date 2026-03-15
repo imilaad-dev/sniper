@@ -381,6 +381,7 @@ def main():
                     continue
 
                 targets.append((mkt, side, odds, token_id, actual_stake, secs_left))
+                open_assets.add(mkt.asset)  # prevent double-betting same asset from different timeframes
 
             if not targets:
                 STOP_EVENT.wait(LOOP_SECONDS)

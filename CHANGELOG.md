@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-03-15 — Fix double-betting same asset from different timeframes
+
+### Why
+With multi-timeframe scanning (5m + 1h), the same asset (e.g. DOGE) could appear twice — once from the 5m market and once from the 1h market, both near expiry simultaneously. The `open_assets` check only blocked assets with existing open positions, not assets already targeted in the current batch. Both could get bought in parallel = double exposure.
+
+### What changed
+- **`sniper.py`**: Added `open_assets.add(mkt.asset)` after each target is added, so the second occurrence of the same asset in a different timeframe is skipped.
+
+---
+
 ## 2026-03-15 — Fix stale fallback defaults found in third audit pass
 
 ### What changed
