@@ -44,10 +44,13 @@ def api_stats():
     state = _load_state()
     trades = _load_trades()
     outcomes = [t for t in trades if t.get("type") == "OUTCOME"]
+    bets = [t for t in trades if t.get("type") == "BET"]
+    misses = [t for t in trades if t.get("type") == "MISS"]
 
     now = datetime.now(timezone.utc)
     today = now.strftime("%Y-%m-%d")
     today_outcomes = [o for o in outcomes if o.get("timestamp", "").startswith(today)]
+    today_misses = [m for m in misses if m.get("timestamp", "").startswith(today)]
 
     wins_today = sum(1 for o in today_outcomes if o.get("pnl_usdc", 0) > 0)
     losses_today = sum(1 for o in today_outcomes if o.get("pnl_usdc", 0) < 0)
@@ -57,6 +60,18 @@ def api_stats():
     total_losses = state.get("total_losses", 0)
     total = total_wins + total_losses
     wr = (total_wins / total * 100) if total > 0 else 0
+
+    # Fill rate: bets / (bets + misses)
+    total_bets = state.get("total_bets", 0)
+    total_misses = state.get("total_misses", len(misses))
+    total_attempts = total_bets + total_misses
+    fill_rate = round((total_bets / total_attempts * 100), 1) if total_attempts > 0 else 0
+
+    # Avg profit per trade
+    avg_profit = round(state.get("pnl_usdc", 0) / total, 4) if total > 0 else 0
+
+    # Build trade_id → timeframe map from BET entries
+    tf_map = {b.get("trade_id"): b.get("timeframe", "5m") for b in bets}
 
     # Recent trades (last 50 outcomes)
     recent = []
@@ -69,20 +84,27 @@ def api_stats():
             "pnl": round(o.get("pnl_usdc", 0), 4),
             "result": o.get("result", "?"),
             "shares": round(o.get("shares", 0), 2),
+            "tf": o.get("timeframe") or tf_map.get(o.get("trade_id"), "?"),
         })
     recent.reverse()
 
     return jsonify({
         "bankroll": round(state.get("bankroll_usdc", 0), 2),
+        "total_deposited": round(state.get("total_deposited", 0), 2),
         "pnl_total": round(state.get("pnl_usdc", 0), 2),
         "pnl_today": round(pnl_today, 4),
-        "total_bets": state.get("total_bets", 0),
+        "total_bets": total_bets,
         "total_wins": total_wins,
         "total_losses": total_losses,
+        "total_misses": total_misses,
+        "misses_today": len(today_misses),
         "win_rate": round(wr, 1),
+        "fill_rate": fill_rate,
+        "avg_profit": avg_profit,
         "wins_today": wins_today,
         "losses_today": losses_today,
         "open_positions": len(state.get("open_positions", [])),
+        "pending_redemptions": len(state.get("pending_redemptions", [])),
         "recent": recent,
     })
 
@@ -453,16 +475,32 @@ TEMPLATE = r"""<!DOCTYPE html>
     <div class="card-sub" id="wlCount"></div>
   </div>
   <div class="card">
+    <div class="card-title">Fill Rate</div>
+    <div class="card-value" id="fillRate">-</div>
+    <div class="card-sub" id="missCount"></div>
+  </div>
+
+  <!-- Row 2: Secondary stats -->
+  <div class="card">
     <div class="card-title">Today</div>
     <div class="card-value" id="todayWL">-</div>
     <div class="card-sub" id="openPos"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Avg Profit</div>
+    <div class="card-value" id="avgProfit">-</div>
+    <div class="card-sub" id="totalBets"></div>
+  </div>
+  <div class="card span-2">
+    <div class="card-title">Status</div>
+    <div class="card-value" id="pendingRedeem" style="font-size:18px">-</div>
   </div>
 
   <!-- Row 2: Recent trades -->
   <div class="card span-4">
     <div class="card-title">Recent Trades</div>
     <table class="data-table">
-      <thead><tr><th>Time</th><th>Asset</th><th>Side</th><th>Odds</th><th>Shares</th><th>Result</th><th>PnL</th></tr></thead>
+      <thead><tr><th>Time</th><th>Asset</th><th>TF</th><th>Side</th><th>Odds</th><th>Shares</th><th>Result</th><th>PnL</th></tr></thead>
       <tbody id="recentBody"></tbody>
     </table>
   </div>
@@ -516,7 +554,7 @@ async function refresh() {
     const d = await res.json();
 
     document.getElementById('bankroll').textContent = '$' + d.bankroll.toFixed(2);
-    document.getElementById('deposited').textContent = 'Total bets: ' + d.total_bets;
+    document.getElementById('deposited').textContent = 'Deposited: $' + d.total_deposited.toFixed(2);
 
     const pt = document.getElementById('pnlTotal');
     pt.textContent = fmt(d.pnl_total);
@@ -529,9 +567,23 @@ async function refresh() {
     document.getElementById('winRate').textContent = d.win_rate.toFixed(1) + '%';
     document.getElementById('wlCount').textContent = d.total_wins + 'W / ' + d.total_losses + 'L';
 
+    document.getElementById('fillRate').textContent = d.fill_rate.toFixed(1) + '%';
+    document.getElementById('missCount').textContent = d.total_bets + ' fills / ' + d.total_misses + ' misses';
+
     document.getElementById('todayWL').innerHTML =
-      '<span class="green">' + d.wins_today + 'W</span> <span style="color:var(--text-dim)">/</span> <span class="red">' + d.losses_today + 'L</span>';
+      '<span class="green">' + d.wins_today + 'W</span> <span style="color:var(--text-dim)">/</span> <span class="red">' + d.losses_today + 'L</span> <span style="color:var(--text-dim)">/</span> <span class="yellow">' + d.misses_today + 'M</span>';
     document.getElementById('openPos').textContent = d.open_positions + ' open position' + (d.open_positions !== 1 ? 's' : '');
+
+    const ap = document.getElementById('avgProfit');
+    ap.textContent = fmt(d.avg_profit);
+    ap.className = 'card-value ' + (d.avg_profit >= 0 ? 'green' : 'red');
+    document.getElementById('totalBets').textContent = d.total_bets + ' resolved trades';
+
+    var statusParts = [];
+    if (d.pending_redemptions > 0) statusParts.push('<span class="yellow">' + d.pending_redemptions + ' pending redeem' + (d.pending_redemptions !== 1 ? 's' : '') + '</span>');
+    else statusParts.push('<span class="green">No pending redemptions</span>');
+    statusParts.push('<span style="color:var(--text-dim)">' + d.open_positions + ' open | ' + d.misses_today + ' misses today</span>');
+    document.getElementById('pendingRedeem').innerHTML = statusParts.join('<br>');
 
     document.getElementById('lastUpdated').textContent = 'updated ' + new Date().toLocaleTimeString();
 
@@ -540,9 +592,11 @@ async function refresh() {
       const won = r.pnl > 0;
       const cls = won ? 'green' : 'red';
       const badge = won ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
+      var tfCls = r.tf === '1h' ? 'purple' : r.tf === '15m' ? 'cyan' : '';
       return '<tr>' +
         '<td>' + r.time.slice(5) + '</td>' +
         '<td><b>' + r.asset + '</b></td>' +
+        '<td class="' + tfCls + '">' + (r.tf || '?') + '</td>' +
         '<td>' + r.side + '</td>' +
         '<td>' + r.odds.toFixed(2) + '</td>' +
         '<td>' + r.shares + '</td>' +

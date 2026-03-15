@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-03-15 — Dashboard: add fill rate, timeframe, avg profit, pending redemptions
+
+### Why
+Dashboard was missing key sniper metrics: fill rate (how many orders actually fill vs miss), which timeframe each trade came from, average profit per trade, and pending redemption status.
+
+### What changed
+- **`client.py`**: Added `timeframe` field to Market dataclass, set during `find_snipeable_markets()` from the tf loop variable.
+- **`sniper.py`**: Added `timeframe` to BET/OUTCOME/pos_entry. MISS events now logged to `trades.jsonl` (type="MISS") with asset, side, odds, error, timeframe. Added `total_misses` counter to state.
+- **`dashboard.py`**: **New stats** — fill rate (fills/attempts), misses today, total deposited, avg profit per trade, pending redemptions count. **New TF column** in trades table (color-coded: purple=1h, cyan=15m, default=5m). Row 1 now has 4 cards (Bankroll, PnL, Win Rate, Fill Rate). Row 2 has Today, Avg Profit, Status (pending redeems + open positions).
+
+---
+
 ## 2026-03-15 — Allow cross-timeframe bets for same asset
 
 ### Why

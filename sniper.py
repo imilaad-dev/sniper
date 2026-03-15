@@ -82,6 +82,7 @@ def _load_state() -> dict:
         "total_losses": 0,
         "open_positions": [],
         "pending_redemptions": [],
+        "total_misses": 0,
     }
 
 
@@ -233,6 +234,7 @@ def main():
                         "result": result,
                         "pnl_usdc": pnl,
                         "shares": shares,
+                        "timeframe": pos.get("timeframe", "5m"),
                     })
 
                     tag = "WIN" if won else "LOSS"
@@ -438,6 +440,7 @@ def main():
                             "stake_usdc": result.amount_usdc,
                             "shares": result.shares,
                             "end_date_iso": mkt.end_date_iso,
+                            "timeframe": mkt.timeframe,
                         }
                         state["open_positions"].append(pos_entry)
                         state["total_bets"] += 1
@@ -454,6 +457,7 @@ def main():
                             "order_id": result.order_id,
                             "question": mkt.question,
                             "secs_left": int(secs_left),
+                            "timeframe": mkt.timeframe,
                         })
 
                         log.info("[%s] SNIPED: %s @ %.2f | $%.2f | shares=%.2f | order=%s",
@@ -462,6 +466,16 @@ def main():
                     else:
                         log.info("[%s] MISS: %s @ %.2f | %s",
                                  mkt.asset.upper(), side, odds, result.error or "unknown")
+                        state["total_misses"] = state.get("total_misses", 0) + 1
+                        _log_trade({
+                            "type": "MISS",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "asset": mkt.asset,
+                            "side": side,
+                            "odds": odds,
+                            "error": result.error or "unknown",
+                            "timeframe": mkt.timeframe,
+                        })
 
             # Save state once after all parallel orders complete
             _save_state(state)

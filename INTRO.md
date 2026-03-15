@@ -44,7 +44,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 |---|---|
 | `sniper.py` | Main loop. Scans every 3s, finds 0.97+ contracts near expiry, buys, resolves, redeems. Telegram alerts on losses + every 10 wins |
 | `client.py` | Stripped-down Polymarket CLOB client. Market discovery (slug-based), live price fetch, GTC limit buy, result check, on-chain redemption |
-| `dashboard.py` | Single-page Flask dashboard on port 5001. Stats, recent trades table, live log tail. Auto-refreshes every 5s |
+| `dashboard.py` | Single-page Flask dashboard on port 5001. Stats (bankroll, PnL, WR, fill rate, avg profit, pending redeems), recent trades table with TF column, live log tail. Auto-refreshes every 5s |
 | `config.json` | Runtime config: min_odds, stake, time window, assets, max_open |
 | `data/state.json` | Bankroll (`total_deposited + pnl_usdc`), PnL, open positions, win/loss counts |
 | `data/trades.jsonl` | Full trade log (BET + OUTCOME records) |

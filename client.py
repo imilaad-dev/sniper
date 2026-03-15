@@ -75,6 +75,7 @@ class Market:
     down_price:     float
     end_date_iso:   str
     asset:          str = "btc"
+    timeframe:      str = "5m"
 
     @property
     def yes_token_id(self): return self.up_token_id
@@ -199,6 +200,7 @@ def find_snipeable_markets(assets: list, min_odds: float = 0.97,
                             up_price=up_price, down_price=down_price,
                             end_date_iso=end_str,
                             asset=asset.lower(),
+                            timeframe=tf,
                         ))
                 except Exception:
                     pass
