@@ -1,5 +1,5 @@
 {
-  "min_odds": 0.98,
+  "min_odds": 0.97,
   "stake_per_bet": 5.0,
   "max_stake_pct": 0.30,
   "max_seconds_left": 15,

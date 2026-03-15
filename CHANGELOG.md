@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-03-15 — Lower min_odds to 0.97
+
+### Why
+More opportunities — 0.97 contracts still have very high win probability near expiry.
+
+### What changed
+- **`config.json`**: `min_odds` 0.98 → 0.97
+
+---
+
 ## 2026-03-15 — Config update + fix parallel snipe exceeding max_open
 
 ### What changed
