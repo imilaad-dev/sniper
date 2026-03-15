@@ -190,7 +190,7 @@ def main():
         f"Assets: {', '.join(a.upper() for a in _assets)}\n"
         f"Hourly: {', '.join(a.upper() for a in _assets_h)}\n"
         f"Timeframes: {', '.join(_tfs)}\n"
-        f"Min odds: {cfg.get('min_odds', 0.99):.2f} | Stake: ${cfg.get('stake_per_bet', 5.0):.0f}\n"
+        f"Min odds: {cfg.get('min_odds', 0.97):.2f} | Stake: ${cfg.get('stake_per_bet', 5.0):.0f}\n"
         f"Window: last {cfg.get('max_seconds_left', 15)}s before expiry"
     )
 
@@ -297,7 +297,7 @@ def main():
                 _save_state(state)
 
             # ── 3. Check capacity ─────────────────────────────────────────
-            max_open = cfg.get("max_open", 2)
+            max_open = cfg.get("max_open", 7)
             if len(still_open) >= max_open:
                 STOP_EVENT.wait(LOOP_SECONDS)
                 continue

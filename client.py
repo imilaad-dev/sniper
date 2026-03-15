@@ -129,10 +129,10 @@ def _pj(val):
     return val if isinstance(val, list) else []
 
 
-def find_snipeable_markets(assets: list, min_odds: float = 0.99,
+def find_snipeable_markets(assets: list, min_odds: float = 0.97,
                            timeframes: list = None,
                            assets_hourly: list = None,
-                           max_secs: int = 30) -> list[Market]:
+                           max_secs: int = 15) -> list[Market]:
     """
     Find markets near expiry with at least one side >= min_odds.
 
