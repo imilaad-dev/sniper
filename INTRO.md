@@ -2,13 +2,13 @@
 
 ## What it does
 
-Buys contracts trading at **$0.97+** on Polymarket **5-minute, 15-minute, and hourly** crypto markets in the **final seconds** before expiry. At these odds the outcome is essentially decided — price just hasn't settled yet. Profit: ~$0.01-0.03 per share per trade, near-zero fees, ~97%+ win rate.
+Buys contracts trading at **$0.97+** on Polymarket **5-minute and hourly** crypto markets in the **final seconds** before expiry. At these odds the outcome is essentially decided — price just hasn't settled yet. Profit: ~$0.01-0.03 per share per trade, near-zero fees, ~97%+ win rate.
 
 Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the same wallet, VPN, and Telegram bot.
 
 **Philosophy: boring math, consistent results.** No analysis, no signals, no intuition. Just farming settled markets faster than the price updates.
 
-**Multi-timeframe:** Scans 5m, 15m, and 1h markets (configurable via `timeframes`). Hourly markets have extra assets (DOGE, BNB, HYPE) and better liquidity. Slug patterns differ by timeframe:
+**Multi-timeframe:** Scans 5m and 1h markets (configurable via `timeframes`). 15m disabled due to 100% miss rate (zero liquidity). Hourly markets have extra assets (DOGE, BNB, HYPE) and better liquidity. Slug patterns differ by timeframe:
 - 5m/15m: `{asset}-updown-{tf}-{unix_timestamp}` (e.g. `btc-updown-5m-1773590400`)
 - 1h: `{full_name}-up-or-down-{month}-{day}-{year}-{hour}-et` (e.g. `bitcoin-up-or-down-march-15-2026-12pm-et`)
 
@@ -16,10 +16,10 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 
 ## How it works
 
-1. **Scan** (every 3 seconds): Query Gamma API for active 5m/15m/1h markets across all 7 assets (BTC, ETH, SOL, XRP, DOGE, BNB, HYPE)
+1. **Scan** (every 3 seconds): Query Gamma API for active 5m/1h markets across all 7 assets (BTC, ETH, SOL, XRP, DOGE, BNB, HYPE)
 2. **Filter**: Find any side (YES or NO) priced at >= `min_odds` (0.97)
 3. **Time gate**: Only buy in the last `max_seconds_left` (15s) to `min_seconds_left` (2s) before market expiry
-4. **Buy**: Place GTC limit order at market price, wait up to 5s for fill
+4. **Buy**: Place GTC limit order at market price + 0.01 buffer (capped at 0.99), wait up to 8s for fill (polling every 1s)
 5. **Resolve**: Wait for market to settle, redeem winning shares for $1.00 each
 6. **Repeat**
 
@@ -75,11 +75,11 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 | `max_stake_pct` | 0.30 | Max stake as fraction of bankroll (30%) |
 | `max_seconds_left` | 15 | Start buying this many seconds before expiry |
 | `min_seconds_left` | 2 | Stop buying — too close to expiry, order won't fill |
-| `fill_timeout_seconds` | 5 | Cancel order if not filled within this time |
+| `fill_timeout_seconds` | 8 | Cancel order if not filled within this time |
 | `max_open` | 7 | Max simultaneous open positions |
 | `assets` | ["btc","eth","sol","xrp","doge","bnb","hype"] | Which assets to scan (all timeframes) |
 | `assets_hourly` | ["btc","eth","sol","xrp","doge","bnb","hype"] | Which assets to scan (1h, same as base) |
-| `timeframes` | ["5m","15m","1h"] | Which market timeframes to scan |
+| `timeframes` | ["5m","1h"] | Which market timeframes to scan (15m disabled — zero liquidity) |
 | `enabled` | true | Master on/off switch |
 
 ---

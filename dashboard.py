@@ -318,7 +318,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   .card-title {
     font-family: var(--mono);
     font-size: 12px;
-    color: rgba(255,255,255,0.7);
+    color: var(--text-dim);
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 8px;
@@ -454,6 +454,7 @@ TEMPLATE = r"""<!DOCTYPE html>
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
       </svg>
     </button>
+    <a href="/logout" style="color:var(--text-dim);text-decoration:none;font-family:var(--mono);font-size:11px;letter-spacing:1px;transition:color 0.3s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">LOGOUT</a>
   </div>
 </div>
 
@@ -461,39 +462,39 @@ TEMPLATE = r"""<!DOCTYPE html>
   <!-- Row 1: Stats cards -->
   <div class="card">
     <div class="card-title">Bankroll</div>
-    <div class="card-value" id="bankroll">-</div>
+    <div class="card-value" id="bankroll">—</div>
     <div class="card-sub" id="deposited"></div>
   </div>
   <div class="card">
     <div class="card-title">PnL (Total)</div>
-    <div class="card-value" id="pnlTotal">-</div>
+    <div class="card-value" id="pnlTotal">—</div>
     <div class="card-sub" id="pnlToday"></div>
   </div>
   <div class="card">
     <div class="card-title">Win Rate</div>
-    <div class="card-value" id="winRate">-</div>
+    <div class="card-value" id="winRate">—</div>
     <div class="card-sub" id="wlCount"></div>
   </div>
   <div class="card">
     <div class="card-title">Fill Rate</div>
-    <div class="card-value" id="fillRate">-</div>
+    <div class="card-value" id="fillRate">—</div>
     <div class="card-sub" id="missCount"></div>
   </div>
 
   <!-- Row 2: Secondary stats -->
   <div class="card">
     <div class="card-title">Today</div>
-    <div class="card-value" id="todayWL">-</div>
+    <div class="card-value" id="todayWL">—</div>
     <div class="card-sub" id="openPos"></div>
   </div>
   <div class="card">
     <div class="card-title">Avg Profit</div>
-    <div class="card-value" id="avgProfit">-</div>
+    <div class="card-value" id="avgProfit">—</div>
     <div class="card-sub" id="totalBets"></div>
   </div>
   <div class="card span-2">
     <div class="card-title">Status</div>
-    <div class="card-value" id="pendingRedeem" style="font-size:18px">-</div>
+    <div class="card-value" id="pendingRedeem" style="font-size:18px">—</div>
   </div>
 
   <!-- Row 2: Recent trades -->
@@ -515,7 +516,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   </div>
 </div>
 
-<footer style="text-align:center; padding:40px 20px 24px; color:var(--text-dim); font-size:12px; letter-spacing:0.5px;">
+<footer style="text-align:center; padding:40px 24px 24px; max-width:1200px; margin:0 auto; color:var(--text-dim); font-size:11px; font-family:var(--mono); letter-spacing:0.5px;">
   Built with love by Milad & Claude &mdash; London, 2026
 </footer>
 
@@ -534,18 +535,18 @@ function colorLine(line) {
 
 // Theme toggle
 const themeBtn = document.getElementById('themeToggle');
-const sunPath = 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z';
-const moonPath = 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z';
+const sunSvg = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+const moonSvg = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
 
 function setTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('theme', t);
-  document.getElementById('themeIcon').innerHTML = '<path d="' + (t === 'light' ? sunPath : moonPath) + '"/>';
+  localStorage.setItem('polybot-theme', t);
+  document.getElementById('themeIcon').innerHTML = t === 'light' ? sunSvg : moonSvg;
 }
 themeBtn.addEventListener('click', function() {
   setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
 });
-setTheme(localStorage.getItem('theme') || 'dark');
+setTheme(localStorage.getItem('polybot-theme') || 'dark');
 
 async function refresh() {
   try {
@@ -587,7 +588,16 @@ async function refresh() {
 
     document.getElementById('lastUpdated').textContent = 'updated ' + new Date().toLocaleTimeString();
 
+    // Status badge — reflect actual data freshness
+    const sb = document.getElementById('statusBadge');
+    if (d.total_bets > 0) {
+      sb.textContent = 'LIVE'; sb.className = 'status-badge status-running';
+    }
+
     const rb = document.getElementById('recentBody');
+    if (!d.recent || d.recent.length === 0) {
+      rb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:24px">No trades yet</td></tr>';
+    } else {
     rb.innerHTML = (d.recent || []).map(function(r) {
       const won = r.pnl > 0;
       const cls = won ? 'green' : 'red';
@@ -603,6 +613,7 @@ async function refresh() {
         '<td>' + badge + '</td>' +
         '<td class="' + cls + '">' + fmt(r.pnl) + '</td></tr>';
     }).join('');
+    }
   } catch(e) {}
 }
 

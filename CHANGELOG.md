@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-03-16 — Reduce miss rate: disable 15m, increase fill timeout, faster polling, price buffer
+
+### Why
+229 misses in one day (90.4% miss rate). 99.7% of misses were "Not filled within 5s — cancelled". 15m timeframe had 100% miss rate (0 fills / 15 attempts). Root causes: thin liquidity at exact quoted price, 5s timeout too tight under lock contention, 2s poll interval missing fills.
+
+### What changed
+- **`config.json`**: `fill_timeout_seconds` 5 → 8. Removed `15m` from `timeframes` (now `["5m", "1h"]`).
+- **`client.py`**: Added +0.01 price buffer — `limit_price = min(price + 0.01, 0.99)` — slightly overpays to fill against thin liquidity. Changed fill poll interval from 2s to 1s (catches fills faster, more checks within timeout window).
+- **`INTRO.md`**: Updated timeframes, fill timeout, buy step description to reflect all changes.
+
+---
+
 ## 2026-03-15 — Add max_odds filter to stop sniping at 1.00
 
 ### Why

@@ -2,13 +2,13 @@
   "min_odds": 0.97,
   "max_odds": 0.99,
   "stake_per_bet": 5.0,
-  "max_stake_pct": 0.30,
+  "max_stake_pct": 0.35,
   "max_seconds_left": 15,
   "min_seconds_left": 2,
-  "fill_timeout_seconds": 5,
+  "fill_timeout_seconds": 8,
   "max_open": 7,
-  "assets": ["btc", "eth", "sol", "xrp", "doge", "bnb", "hype"],
-  "assets_hourly": ["btc", "eth", "sol", "xrp", "doge", "bnb", "hype"],
-  "timeframes": ["5m", "15m", "1h"],
+  "assets": ["btc", "eth", "sol", "xrp", "bnb", "hype"],
+  "assets_hourly": ["btc", "eth", "sol", "xrp", "bnb", "hype"],
+  "timeframes": ["5m", "1h"],
   "enabled": true
 }

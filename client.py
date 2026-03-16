@@ -277,7 +277,7 @@ def place_buy(
         from py_clob_client.order_builder.constants import BUY
 
         client = _get_client(private_key)
-        limit_price = min(price, 0.99)
+        limit_price = min(price + 0.01, 0.99)
         shares = round(amount_usdc / limit_price, 4)
         if shares < 5:
             shares = 5.0
@@ -305,12 +305,12 @@ def place_buy(
             return BuyResult(False, None, side, price, amount_usdc, 0,
                              error="No order ID returned")
 
-        # Quick fill check — sniper needs speed
-        n_checks = max(1, fill_timeout // 2)
+        # Quick fill check — poll every 1s for faster detection
+        n_checks = max(1, fill_timeout)
         filled = False
         matched = 0.0
         for _ in range(n_checks):
-            time.sleep(2)
+            time.sleep(1)
             try:
                 with _order_lock:
                     order = client.get_order(order_id)
