@@ -285,15 +285,15 @@ def place_buy(
     side: str,
     amount_usdc: float,
     price: float = 0.99,
-    fill_timeout: int = 5,
+    fill_timeout: int = 3,
 ) -> BuyResult:
-    """Place a quick GTC limit buy, wait for fill, cancel if not."""
+    """Place a FAK (Fill-and-Kill) limit buy. Fills instantly or not at all."""
     try:
         from py_clob_client.clob_types import OrderArgs, OrderType
         from py_clob_client.order_builder.constants import BUY
 
         client = _get_client(private_key)
-        limit_price = min(price + 0.01, 0.99)
+        limit_price = min(price + 0.02, 0.99)
         shares = round(amount_usdc / limit_price, 4)
         if shares < 5:
             shares = 5.0
@@ -304,7 +304,7 @@ def place_buy(
         with _order_lock:
             signed = client.create_order(order_args)
             try:
-                resp = client.post_order(signed, OrderType.GTC)
+                resp = client.post_order(signed, OrderType.FAK)
             except Exception as e:
                 err_str = str(e).lower()
                 if "401" in err_str or "403" in err_str or "unauthorized" in err_str:
@@ -312,7 +312,7 @@ def place_buy(
                     _cached_client = None
                     client = _get_client(private_key)
                     signed = client.create_order(order_args)
-                    resp = client.post_order(signed, OrderType.GTC)
+                    resp = client.post_order(signed, OrderType.FAK)
                 else:
                     raise
 
@@ -321,11 +321,10 @@ def place_buy(
             return BuyResult(False, None, side, price, amount_usdc, 0,
                              error="No order ID returned")
 
-        # Quick fill check — poll every 1s for faster detection
-        n_checks = max(1, fill_timeout)
+        # FAK fills instantly — brief poll to confirm status
         filled = False
         matched = 0.0
-        for _ in range(n_checks):
+        for _ in range(fill_timeout):
             time.sleep(1)
             try:
                 with _order_lock:
@@ -341,24 +340,8 @@ def place_buy(
                 pass
 
         if not filled:
-            try:
-                with _order_lock:
-                    client.cancel(order_id)
-            except Exception:
-                pass
-            # Re-check after cancel
-            try:
-                time.sleep(1)
-                with _order_lock:
-                    order = client.get_order(order_id)
-                matched = float(order.get("size_matched", 0)) if isinstance(order, dict) else 0
-                if matched > 0:
-                    filled = True
-            except Exception:
-                pass
-            if not filled:
-                return BuyResult(False, order_id, side, price, amount_usdc, 0,
-                                 error=f"Not filled within {fill_timeout}s — cancelled")
+            return BuyResult(False, order_id, side, price, amount_usdc, 0,
+                             error="FAK not filled — no liquidity")
 
         actual_shares = matched if matched > 0 else shares
         actual_cost = round(actual_shares * limit_price, 4)
@@ -373,6 +356,103 @@ def place_buy(
         else:
             log.error("Buy failed: %s", e)
         return BuyResult(False, None, side, price, amount_usdc, 0, error=str(e))
+
+
+def place_buy_batch(
+    private_key: str,
+    orders: list[dict],
+) -> list[BuyResult]:
+    """Place multiple FAK orders in a single batch API call.
+    Each order dict: {token_id, side, amount_usdc, price}.
+    Returns list of BuyResult in same order as input."""
+    try:
+        from py_clob_client.clob_types import OrderArgs, OrderType, PostOrdersArgs
+        from py_clob_client.order_builder.constants import BUY
+
+        client = _get_client(private_key)
+        batch = []
+        order_meta = []  # track per-order details for results
+
+        for o in orders:
+            limit_price = min(o["price"] + 0.02, 0.99)
+            shares = round(o["amount_usdc"] / limit_price, 4)
+            if shares < 5:
+                shares = 5.0
+            amount_usdc = round(shares * limit_price, 2)
+
+            args = OrderArgs(token_id=o["token_id"], price=limit_price, size=shares, side=BUY)
+            with _order_lock:
+                signed = client.create_order(args)
+            batch.append(PostOrdersArgs(order=signed, orderType=OrderType.FAK))
+            order_meta.append({"side": o["side"], "price": o["price"],
+                               "limit_price": limit_price, "shares": shares,
+                               "amount_usdc": amount_usdc})
+
+        # Single batch API call for all orders
+        with _order_lock:
+            try:
+                resp_list = client.post_orders(batch)
+            except Exception as e:
+                err_str = str(e).lower()
+                if "401" in err_str or "403" in err_str or "unauthorized" in err_str:
+                    global _cached_client
+                    _cached_client = None
+                    client = _get_client(private_key)
+                    # Re-sign all orders
+                    batch = []
+                    for i, o in enumerate(orders):
+                        meta = order_meta[i]
+                        args = OrderArgs(token_id=o["token_id"], price=meta["limit_price"],
+                                         size=meta["shares"], side=BUY)
+                        signed = client.create_order(args)
+                        batch.append(PostOrdersArgs(order=signed, orderType=OrderType.FAK))
+                    resp_list = client.post_orders(batch)
+                else:
+                    raise
+
+        if not isinstance(resp_list, list):
+            resp_list = [resp_list]
+
+        # Collect order IDs
+        order_ids = []
+        for resp in resp_list:
+            oid = ""
+            if isinstance(resp, dict):
+                oid = resp.get("orderID") or resp.get("id") or ""
+            order_ids.append(oid)
+
+        # Brief poll to confirm FAK fill status
+        time.sleep(1)
+        results = []
+        for i, oid in enumerate(order_ids):
+            meta = order_meta[i]
+            if not oid:
+                results.append(BuyResult(False, None, meta["side"], meta["price"],
+                                         meta["amount_usdc"], 0, error="No order ID returned"))
+                continue
+            try:
+                with _order_lock:
+                    order = client.get_order(oid)
+                matched = float(order.get("size_matched", 0)) if isinstance(order, dict) else 0
+                if matched > 0:
+                    actual_cost = round(matched * meta["limit_price"], 4)
+                    results.append(BuyResult(True, oid, meta["side"], meta["price"],
+                                             actual_cost, matched,
+                                             fill_price=meta["limit_price"]))
+                else:
+                    results.append(BuyResult(False, oid, meta["side"], meta["price"],
+                                             meta["amount_usdc"], 0,
+                                             error="FAK not filled — no liquidity"))
+            except Exception as e:
+                results.append(BuyResult(False, oid, meta["side"], meta["price"],
+                                         meta["amount_usdc"], 0, error=str(e)))
+
+        return results
+
+    except Exception as e:
+        log.error("Batch buy failed: %s", e)
+        return [BuyResult(False, None, o.get("side", "?"), o.get("price", 0),
+                          o.get("amount_usdc", 0), 0, error=str(e)) for o in orders]
 
 
 _REDEEM_LOCK_FILE = "/tmp/polymarket_redeem.lock"

@@ -9,7 +9,7 @@ Strategy:
   - Scan all 5m/1h markets every 3 seconds
   - Find any side (YES/NO) priced at >= min_odds (default 0.90)
   - Only buy in the last N seconds before expiry (default 2-15s)
-  - Quick fill timeout (8s) — if not filled, cancel and move on
+  - FAK (Fill-and-Kill) orders — fill instantly or not at all, 3s confirm timeout
   - Wait for resolution, redeem winning shares
 """
 
@@ -42,7 +42,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # ── Local imports ──────────────────────────────────────────────────────────
 sys.path.insert(0, str(BOT_DIR))
-from client import find_snipeable_markets, get_market_result, place_buy, redeem_positions
+from client import find_snipeable_markets, get_market_result, place_buy, place_buy_batch, redeem_positions
 
 # ── Config / State ─────────────────────────────────────────────────────────
 CONFIG_FILE = BOT_DIR / "config.json"
@@ -329,7 +329,7 @@ def main():
             min_odds = cfg.get("min_odds", 0.97)
             max_secs = cfg.get("max_seconds_left", 15)
             min_secs = cfg.get("min_seconds_left", 2)
-            fill_timeout = cfg.get("fill_timeout_seconds", 8)
+            fill_timeout = cfg.get("fill_timeout_seconds", 3)
 
             timeframes = cfg.get("timeframes", ["5m", "1h"])
             assets_hourly = cfg.get("assets_hourly", assets)
@@ -412,82 +412,71 @@ def main():
                 continue
             targets = targets[:max_targets]
 
-            # Fire all orders in parallel
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-
-            def _do_snipe(args):
-                mkt, side, odds, token_id, actual_stake, secs_left = args
+            # Fire all orders in a single batch FAK call
+            for t in targets:
+                mkt, side, odds, token_id, actual_stake, secs_left = t
                 log.info("[%s] SNIPE: %s @ %.2f | stake=$%.2f | %ds left | %s",
                          mkt.asset.upper(), side, odds, actual_stake,
                          int(secs_left), mkt.question[:50])
-                result = place_buy(
-                    private_key=privkey,
-                    token_id=token_id,
-                    side=side,
-                    amount_usdc=actual_stake,
-                    price=odds,
-                    fill_timeout=fill_timeout,
-                )
-                return (mkt, side, odds, secs_left, result)
 
-            with ThreadPoolExecutor(max_workers=len(targets)) as pool:
-                futures = [pool.submit(_do_snipe, t) for t in targets]
-                for fut in as_completed(futures):
-                    try:
-                        mkt, side, odds, secs_left, result = fut.result()
-                    except Exception as e:
-                        log.warning("Parallel snipe error: %s", e)
-                        continue
+            batch_orders = [
+                {"token_id": t[3], "side": t[1], "amount_usdc": t[4], "price": t[2]}
+                for t in targets
+            ]
+            batch_results = place_buy_batch(privkey, batch_orders)
 
-                    if result.success:
-                        trade_id = f"snipe_{int(time.time()*1000)}_{threading.get_ident() % 10000}"
-                        pos_entry = {
-                            "trade_id": trade_id,
-                            "market_id": mkt.condition_id,
-                            "asset": mkt.asset,
-                            "side": side,
-                            "odds": odds,
-                            "fill_price": result.fill_price or odds,
-                            "stake_usdc": result.amount_usdc,
-                            "shares": result.shares,
-                            "end_date_iso": mkt.end_date_iso,
-                            "timeframe": mkt.timeframe,
-                        }
-                        state["open_positions"].append(pos_entry)
-                        state["total_bets"] += 1
+            for i, result in enumerate(batch_results):
+                mkt, side, odds, token_id, actual_stake, secs_left = targets[i]
 
-                        _log_trade({
-                            "type": "BET",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "trade_id": trade_id,
-                            "asset": mkt.asset,
-                            "side": side,
-                            "odds": odds,
-                            "fill_price": result.fill_price or odds,
-                            "stake_usdc": result.amount_usdc,
-                            "shares": result.shares,
-                            "order_id": result.order_id,
-                            "question": mkt.question,
-                            "secs_left": int(secs_left),
-                            "timeframe": mkt.timeframe,
-                        })
+                if result.success:
+                    trade_id = f"snipe_{int(time.time()*1000)}_{i}"
+                    pos_entry = {
+                        "trade_id": trade_id,
+                        "market_id": mkt.condition_id,
+                        "asset": mkt.asset,
+                        "side": side,
+                        "odds": odds,
+                        "fill_price": result.fill_price or odds,
+                        "stake_usdc": result.amount_usdc,
+                        "shares": result.shares,
+                        "end_date_iso": mkt.end_date_iso,
+                        "timeframe": mkt.timeframe,
+                    }
+                    state["open_positions"].append(pos_entry)
+                    state["total_bets"] += 1
 
-                        log.info("[%s] SNIPED: %s @ %.2f | $%.2f | shares=%.2f | order=%s",
-                                 mkt.asset.upper(), side, odds, result.amount_usdc,
-                                 result.shares, result.order_id)
-                    else:
-                        log.info("[%s] MISS: %s @ %.2f | %s",
-                                 mkt.asset.upper(), side, odds, result.error or "unknown")
-                        state["total_misses"] = state.get("total_misses", 0) + 1
-                        _log_trade({
-                            "type": "MISS",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "asset": mkt.asset,
-                            "side": side,
-                            "odds": odds,
-                            "error": result.error or "unknown",
-                            "timeframe": mkt.timeframe,
-                        })
+                    _log_trade({
+                        "type": "BET",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "trade_id": trade_id,
+                        "asset": mkt.asset,
+                        "side": side,
+                        "odds": odds,
+                        "fill_price": result.fill_price or odds,
+                        "stake_usdc": result.amount_usdc,
+                        "shares": result.shares,
+                        "order_id": result.order_id,
+                        "question": mkt.question,
+                        "secs_left": int(secs_left),
+                        "timeframe": mkt.timeframe,
+                    })
+
+                    log.info("[%s] SNIPED: %s @ %.2f | $%.2f | shares=%.2f | order=%s",
+                             mkt.asset.upper(), side, odds, result.amount_usdc,
+                             result.shares, result.order_id)
+                else:
+                    log.info("[%s] MISS: %s @ %.2f | %s",
+                             mkt.asset.upper(), side, odds, result.error or "unknown")
+                    state["total_misses"] = state.get("total_misses", 0) + 1
+                    _log_trade({
+                        "type": "MISS",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "asset": mkt.asset,
+                        "side": side,
+                        "odds": odds,
+                        "error": result.error or "unknown",
+                        "timeframe": mkt.timeframe,
+                    })
 
             # Save state once after all parallel orders complete
             _save_state(state)

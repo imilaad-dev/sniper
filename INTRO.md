@@ -20,7 +20,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 2. **Filter**: Find any side (YES or NO) priced at >= `min_odds` (0.97)
 3. **Time gate**: Only buy in the last `max_seconds_left` (15s) to `min_seconds_left` (2s) before market expiry
 4. **Price**: Use CLOB `/price` endpoint; fall back to orderbook best ask for hourly markets near expiry (where `/price` returns 0 or 1.0)
-5. **Buy**: Place GTC limit order at market price + 0.01 buffer (capped at 0.99), wait up to 8s for fill (polling every 1s)
+5. **Buy**: Place FAK (Fill-and-Kill) batch order at market price + 0.02 buffer (capped at 0.99) — fills instantly against existing liquidity, no waiting
 6. **Resolve**: Wait for market to settle, redeem winning shares for $1.00 each
 7. **Repeat**
 
@@ -76,7 +76,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 | `max_stake_pct` | 0.30 | Max stake as fraction of bankroll (30%) |
 | `max_seconds_left` | 20 | Start buying this many seconds before expiry |
 | `min_seconds_left` | 2 | Stop buying — too close to expiry, order won't fill |
-| `fill_timeout_seconds` | 8 | Cancel order if not filled within this time |
+| `fill_timeout_seconds` | 3 | FAK confirmation timeout (FAK fills instantly; this is just the status check window) |
 | `max_open` | 7 | Max simultaneous open positions |
 | `assets` | ["btc","eth","sol","xrp","doge","bnb","hype"] | Which assets to scan (all timeframes) |
 | `assets_hourly` | ["btc","eth","sol","xrp","doge","bnb","hype"] | Which assets to scan (1h, same as base) |

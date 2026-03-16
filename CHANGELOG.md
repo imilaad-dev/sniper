@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-03-16 — FAK orders + batch execution + reduced timeout
+
+### Why
+90% miss rate caused by GTC orders sitting on the book for 8s waiting for fills. FAK (Fill-and-Kill) orders fill instantly against existing liquidity — no waiting, no cancellation needed. Batch API sends all orders in one call instead of serialized ThreadPoolExecutor.
+
+### What changed
+- **`client.py`**: `place_buy()` now uses `OrderType.FAK` instead of `OrderType.GTC`. Price buffer increased from +0.01 to +0.02 for more aggressive fills. Fill check reduced to 3 polls (FAK fills instantly, just confirming status). No more cancel logic needed. Added `place_buy_batch()` — signs all orders, sends via single `client.post_orders()` batch call, polls fill status once for all.
+- **`sniper.py`**: Replaced `ThreadPoolExecutor` parallel execution with `place_buy_batch()` single batch call. Removed `concurrent.futures` import. Trade IDs now use batch index instead of thread ID.
+- **`config.json`**: `fill_timeout_seconds` 8 → 3 (FAK is instant; timeout is just status confirmation).
+- **`INTRO.md`**: Updated buy step and fill timeout docs.
+
+---
+
 ## 2026-03-16 — Lower stake to $3, prioritize lower odds targets
 
 ### Why
