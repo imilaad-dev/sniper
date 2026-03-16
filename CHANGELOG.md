@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-03-16 — Lower min_odds to 0.90 for higher profit per trade
+
+### Why
+At 0.97+ odds, profit is only $0.01-0.03/share and one loss erases ~100 wins. Lowering to 0.90 increases profit to $0.05-0.10/share, so one loss only erases ~10-15 wins. With 8-13s left at fill time (per trade history), outcomes at 0.90+ are still very likely decided. Better risk/reward ratio overall.
+
+### What changed
+- **`config.json`**: `min_odds` 0.97 → 0.90.
+- **`INTRO.md`**: Updated min_odds references.
+
+---
+
 ## 2026-03-16 — Reduce miss rate: disable 15m, increase fill timeout, faster polling, price buffer
 
 ### Why
