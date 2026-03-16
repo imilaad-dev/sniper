@@ -3,7 +3,7 @@
   "max_odds": 0.99,
   "stake_per_bet": 5.0,
   "max_stake_pct": 0.35,
-  "max_seconds_left": 19,
+  "max_seconds_left": 20,
   "min_seconds_left": 2,
   "fill_timeout_seconds": 8,
   "max_open": 7,
