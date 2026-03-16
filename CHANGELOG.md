@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-03-16 — Full cleanup: remove dead code, fix stale defaults
+
+### Why
+Post-FAK/batch rewrite left dead code and stale fallback defaults across all files.
+
+### What changed
+- **`client.py`**: Removed dead `place_buy()` function (~75 lines, replaced by `place_buy_batch`). Removed `"15m": 900` from WINDOWS dict. Updated docstring to "5m/1h". Fixed `find_snipeable_markets` defaults: `min_odds` 0.97→0.90, `max_secs` 15→20.
+- **`sniper.py`**: Removed dead `place_buy` import. Removed dead `fill_timeout` variable (unused after batch rewrite). Fixed all fallback defaults: `min_odds` 0.97→0.90, `max_seconds_left` 15→20. Updated docstring "2-15s"→"2-20s".
+- **`dashboard.py`**: Removed dead 15m color handling from trade table.
+
+---
+
 ## 2026-03-16 — FAK orders + batch execution + reduced timeout
 
 ### Why

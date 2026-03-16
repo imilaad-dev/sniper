@@ -605,7 +605,7 @@ async function refresh() {
       const won = r.pnl > 0;
       const cls = won ? 'green' : 'red';
       const badge = won ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
-      var tfCls = r.tf === '1h' ? 'purple' : r.tf === '15m' ? 'cyan' : '';
+      var tfCls = r.tf === '1h' ? 'purple' : '';
       return '<tr>' +
         '<td>' + r.time.slice(5) + '</td>' +
         '<td><b>' + r.asset + '</b></td>' +

@@ -1,6 +1,6 @@
 """
 client.py — Stripped-down Polymarket CLOB client for the sniper bot.
-Finds 5m/15m/1h markets, fetches live odds, places quick buys, checks resolution, redeems.
+Finds 5m/1h markets, fetches live odds, places FAK batch buys, checks resolution, redeems.
 """
 
 import requests
@@ -24,7 +24,6 @@ CTF       = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
 USDCE     = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 WINDOWS = {
     "5m":  300,    # 5 minutes
-    "15m": 900,    # 15 minutes
     "1h":  3600,   # 1 hour
 }
 
@@ -146,10 +145,10 @@ def _pj(val):
     return val if isinstance(val, list) else []
 
 
-def find_snipeable_markets(assets: list, min_odds: float = 0.97,
+def find_snipeable_markets(assets: list, min_odds: float = 0.90,
                            timeframes: list = None,
                            assets_hourly: list = None,
-                           max_secs: int = 15) -> list[Market]:
+                           max_secs: int = 20) -> list[Market]:
     """
     Find markets near expiry with at least one side >= min_odds.
 
@@ -277,85 +276,6 @@ def _get_client(private_key: str):
         _cached_client_key = private_key
         log.info("CLOB client created")
         return client
-
-
-def place_buy(
-    private_key: str,
-    token_id: str,
-    side: str,
-    amount_usdc: float,
-    price: float = 0.99,
-    fill_timeout: int = 3,
-) -> BuyResult:
-    """Place a FAK (Fill-and-Kill) limit buy. Fills instantly or not at all."""
-    try:
-        from py_clob_client.clob_types import OrderArgs, OrderType
-        from py_clob_client.order_builder.constants import BUY
-
-        client = _get_client(private_key)
-        limit_price = min(price + 0.02, 0.99)
-        shares = round(amount_usdc / limit_price, 4)
-        if shares < 5:
-            shares = 5.0
-            amount_usdc = round(shares * limit_price, 2)
-
-        order_args = OrderArgs(token_id=token_id, price=limit_price, size=shares, side=BUY)
-        # Serialize CLOB calls — py_clob_client shares one HTTP session, not thread-safe
-        with _order_lock:
-            signed = client.create_order(order_args)
-            try:
-                resp = client.post_order(signed, OrderType.FAK)
-            except Exception as e:
-                err_str = str(e).lower()
-                if "401" in err_str or "403" in err_str or "unauthorized" in err_str:
-                    global _cached_client
-                    _cached_client = None
-                    client = _get_client(private_key)
-                    signed = client.create_order(order_args)
-                    resp = client.post_order(signed, OrderType.FAK)
-                else:
-                    raise
-
-        order_id = resp.get("orderID") or resp.get("id") or ""
-        if not order_id:
-            return BuyResult(False, None, side, price, amount_usdc, 0,
-                             error="No order ID returned")
-
-        # FAK fills instantly — brief poll to confirm status
-        filled = False
-        matched = 0.0
-        for _ in range(fill_timeout):
-            time.sleep(1)
-            try:
-                with _order_lock:
-                    order = client.get_order(order_id)
-                status = order.get("status", "").upper() if isinstance(order, dict) else ""
-                matched = float(order.get("size_matched", 0)) if isinstance(order, dict) else 0
-                if status == "MATCHED" or matched > 0:
-                    filled = True
-                    break
-                if status in ("CANCELLED", "EXPIRED"):
-                    break
-            except Exception:
-                pass
-
-        if not filled:
-            return BuyResult(False, order_id, side, price, amount_usdc, 0,
-                             error="FAK not filled — no liquidity")
-
-        actual_shares = matched if matched > 0 else shares
-        actual_cost = round(actual_shares * limit_price, 4)
-
-        return BuyResult(True, order_id, side, price, actual_cost, actual_shares,
-                         fill_price=limit_price)
-
-    except Exception as e:
-        err_str = str(e).lower()
-        if any(kw in err_str for kw in ("request exception", "timeout", "connection")):
-            log.warning("Transient error: %s — skipping", e)
-        else:
-            log.error("Buy failed: %s", e)
-        return BuyResult(False, None, side, price, amount_usdc, 0, error=str(e))
 
 
 def place_buy_batch(

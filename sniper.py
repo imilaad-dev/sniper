@@ -8,7 +8,7 @@ Risk: rare reversal in final seconds = full stake loss.
 Strategy:
   - Scan all 5m/1h markets every 3 seconds
   - Find any side (YES/NO) priced at >= min_odds (default 0.90)
-  - Only buy in the last N seconds before expiry (default 2-15s)
+  - Only buy in the last N seconds before expiry (default 2-20s)
   - FAK (Fill-and-Kill) orders — fill instantly or not at all, 3s confirm timeout
   - Wait for resolution, redeem winning shares
 """
@@ -42,7 +42,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # ── Local imports ──────────────────────────────────────────────────────────
 sys.path.insert(0, str(BOT_DIR))
-from client import find_snipeable_markets, get_market_result, place_buy, place_buy_batch, redeem_positions
+from client import find_snipeable_markets, get_market_result, place_buy_batch, redeem_positions
 
 # ── Config / State ─────────────────────────────────────────────────────────
 CONFIG_FILE = BOT_DIR / "config.json"
@@ -184,17 +184,17 @@ def main():
     _assets_h = cfg.get("assets_hourly", _assets)
     log.info("Assets: %s | Hourly: %s | Timeframes: %s | Min odds: %.2f | Window: %d-%ds",
              _assets, _assets_h, _tfs,
-             cfg.get("min_odds", 0.97),
+             cfg.get("min_odds", 0.90),
              cfg.get("min_seconds_left", 2),
-             cfg.get("max_seconds_left", 15))
+             cfg.get("max_seconds_left", 20))
 
     _notify(
         f"Sniper Bot Started\n"
         f"Assets: {', '.join(a.upper() for a in _assets)}\n"
         f"Hourly: {', '.join(a.upper() for a in _assets_h)}\n"
         f"Timeframes: {', '.join(_tfs)}\n"
-        f"Min odds: {cfg.get('min_odds', 0.97):.2f} | Stake: ${cfg.get('stake_per_bet', 5.0):.0f}\n"
-        f"Window: last {cfg.get('max_seconds_left', 15)}s before expiry"
+        f"Min odds: {cfg.get('min_odds', 0.90):.2f} | Stake: ${cfg.get('stake_per_bet', 5.0):.0f}\n"
+        f"Window: last {cfg.get('max_seconds_left', 20)}s before expiry"
     )
 
     while RUNNING:
@@ -326,10 +326,9 @@ def main():
 
             # ── 4. Scan for snipeable markets ─────────────────────────────
             assets = cfg.get("assets", ["btc", "eth", "sol", "xrp", "doge", "bnb", "hype"])
-            min_odds = cfg.get("min_odds", 0.97)
-            max_secs = cfg.get("max_seconds_left", 15)
+            min_odds = cfg.get("min_odds", 0.90)
+            max_secs = cfg.get("max_seconds_left", 20)
             min_secs = cfg.get("min_seconds_left", 2)
-            fill_timeout = cfg.get("fill_timeout_seconds", 3)
 
             timeframes = cfg.get("timeframes", ["5m", "1h"])
             assets_hourly = cfg.get("assets_hourly", assets)
