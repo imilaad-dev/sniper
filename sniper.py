@@ -389,7 +389,7 @@ def main():
                 side, odds, token_id = candidates[0]
 
                 actual_stake = min(stake, max_stake)
-                if actual_stake < 3.0:
+                if actual_stake < 5.0:
                     continue
 
                 targets.append((mkt, side, odds, token_id, actual_stake, secs_left))

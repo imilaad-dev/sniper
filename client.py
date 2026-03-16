@@ -295,8 +295,8 @@ def place_buy(
         client = _get_client(private_key)
         limit_price = min(price + 0.01, 0.99)
         shares = round(amount_usdc / limit_price, 4)
-        if shares < 1:
-            shares = 1.0
+        if shares < 5:
+            shares = 5.0
             amount_usdc = round(shares * limit_price, 2)
 
         order_args = OrderArgs(token_id=token_id, price=limit_price, size=shares, side=BUY)
