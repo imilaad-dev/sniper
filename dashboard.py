@@ -29,11 +29,14 @@ def _load_state() -> dict:
     return {}
 
 
-def _load_trades() -> list:
+def _load_trades(max_lines: int = 2000) -> list:
+    """Load trades from JSONL. Reads last max_lines for efficiency."""
     if not TRADES_FILE.exists():
         return []
     trades = []
-    for line in TRADES_FILE.read_text().splitlines():
+    with open(TRADES_FILE) as f:
+        lines = deque(f, maxlen=max_lines)
+    for line in lines:
         try: trades.append(json.loads(line))
         except Exception: pass
     return trades

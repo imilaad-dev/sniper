@@ -141,7 +141,7 @@ def find_snipeable_markets(assets: list, min_odds: float = 0.97,
     skips CLOB price fetch if market isn't close to expiry.
     """
     if timeframes is None:
-        timeframes = ["5m", "15m", "1h"]
+        timeframes = ["5m", "1h"]
     if assets_hourly is None:
         assets_hourly = assets
     now_ts = int(time.time())
@@ -347,7 +347,8 @@ def place_buy(
         actual_shares = matched if matched > 0 else shares
         actual_cost = round(actual_shares * limit_price, 4)
 
-        return BuyResult(True, order_id, side, price, actual_cost, actual_shares)
+        return BuyResult(True, order_id, side, price, actual_cost, actual_shares,
+                         fill_price=limit_price)
 
     except Exception as e:
         err_str = str(e).lower()

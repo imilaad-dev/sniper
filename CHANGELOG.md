@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-03-16 — Fix 4 audit issues: fill_price tracking, stale defaults, RPC throttle, dashboard memory
+
+### Why
+Full code audit found: (1) `odds` in trade logs showed market price, not actual fill price (+0.01 buffer) — misleading display, (2) fallback defaults still referenced 15m/0.97/5s, (3) on-chain RPC balance check ran every 3s scan adding 200-500ms latency, (4) dashboard loaded entire trades.jsonl into memory on every request.
+
+### What changed
+- **`client.py`**: Now sets `fill_price=limit_price` in successful `BuyResult`. Updated default timeframes fallback to `["5m", "1h"]`.
+- **`sniper.py`**: Records `fill_price` in position entries and BET trade logs. Updated docstring to reflect 0.90/5m+1h/8s. Fixed all fallback defaults: `fill_timeout_seconds` 5→8, `timeframes` removed 15m. Throttled on-chain balance check to every 10th loop (~30s) with cached value.
+- **`dashboard.py`**: `_load_trades()` now uses `deque(f, maxlen=2000)` to read only last 2000 lines instead of entire file.
+- **`INTRO.md`**: Updated title and profit description to match 0.90 config.
+
+---
+
 ## 2026-03-16 — Lower min_odds to 0.90 for higher profit per trade
 
 ### Why

@@ -1,8 +1,8 @@
-# Sniper Bot — 97¢+ Contract Farmer
+# Sniper Bot — 90¢+ Contract Farmer
 
 ## What it does
 
-Buys contracts trading at **$0.90+** on Polymarket **5-minute and hourly** crypto markets in the **final seconds** before expiry. At these odds the outcome is essentially decided — price just hasn't settled yet. Profit: ~$0.01-0.03 per share per trade, near-zero fees, ~97%+ win rate.
+Buys contracts trading at **$0.90+** on Polymarket **5-minute and hourly** crypto markets in the **final seconds** before expiry. At these odds the outcome is essentially decided — price just hasn't settled yet. Profit: ~$0.01-0.10 per share per trade, near-zero fees, ~95%+ win rate.
 
 Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the same wallet, VPN, and Telegram bot.
 

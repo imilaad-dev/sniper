@@ -1,15 +1,15 @@
 #!/opt/polybot/venv/bin/python3
 """
-sniper.py — 97¢+ Contract Sniper Bot
-Buys contracts at $0.97+ in the final seconds of 5m/15m/1h crypto markets.
-Profit: ~$0.01-0.03/share per trade, near-zero fees, ~97%+ win rate.
+sniper.py — 90¢+ Contract Sniper Bot
+Buys contracts at $0.90+ in the final seconds of 5m/1h crypto markets.
+Profit: ~$0.01-0.10/share per trade, near-zero fees, ~95%+ win rate.
 Risk: rare reversal in final seconds = full stake loss.
 
 Strategy:
-  - Scan all 5m/15m/1h markets every 3 seconds
-  - Find any side (YES/NO) priced at >= min_odds (default 0.97)
+  - Scan all 5m/1h markets every 3 seconds
+  - Find any side (YES/NO) priced at >= min_odds (default 0.90)
   - Only buy in the last N seconds before expiry (default 2-15s)
-  - Quick fill timeout (5s) — if not filled, cancel and move on
+  - Quick fill timeout (8s) — if not filled, cancel and move on
   - Wait for resolution, redeem winning shares
 """
 
@@ -176,8 +176,10 @@ def main():
     if state["bankroll_usdc"] == 0 and state.get("total_deposited", 0) == 0:
         log.warning("Sniper bankroll is $0. Set total_deposited in state.json to allocate funds.")
 
+    _loop_count = 0
+    _cached_onchain = None
     log.info("=== Sniper Bot Starting ===")
-    _tfs = cfg.get("timeframes", ["5m", "15m", "1h"])
+    _tfs = cfg.get("timeframes", ["5m", "1h"])
     _assets = cfg.get("assets", ["btc", "eth", "sol", "xrp", "doge", "bnb", "hype"])
     _assets_h = cfg.get("assets_hourly", _assets)
     log.info("Assets: %s | Hourly: %s | Timeframes: %s | Min odds: %.2f | Window: %d-%ds",
@@ -312,7 +314,11 @@ def main():
                 continue
 
             # On-chain wallet check (shared wallet — both bots draw from same USDC.e)
-            onchain = _get_onchain_balance()
+            # Throttled: only check every 10 loops (~30s) to avoid RPC latency on every scan
+            _loop_count += 1
+            if _loop_count % 10 == 1 or _cached_onchain is None:
+                _cached_onchain = _get_onchain_balance()
+            onchain = _cached_onchain
             if onchain is not None and onchain < stake:
                 log.info("On-chain balance $%.2f too low for stake $%.2f — waiting", onchain, stake)
                 STOP_EVENT.wait(LOOP_SECONDS)
@@ -323,9 +329,9 @@ def main():
             min_odds = cfg.get("min_odds", 0.97)
             max_secs = cfg.get("max_seconds_left", 15)
             min_secs = cfg.get("min_seconds_left", 2)
-            fill_timeout = cfg.get("fill_timeout_seconds", 5)
+            fill_timeout = cfg.get("fill_timeout_seconds", 8)
 
-            timeframes = cfg.get("timeframes", ["5m", "15m", "1h"])
+            timeframes = cfg.get("timeframes", ["5m", "1h"])
             assets_hourly = cfg.get("assets_hourly", assets)
             markets = find_snipeable_markets(assets, min_odds=min_odds,
                                              timeframes=timeframes,
@@ -438,6 +444,7 @@ def main():
                             "asset": mkt.asset,
                             "side": side,
                             "odds": odds,
+                            "fill_price": result.fill_price or odds,
                             "stake_usdc": result.amount_usdc,
                             "shares": result.shares,
                             "end_date_iso": mkt.end_date_iso,
@@ -453,6 +460,7 @@ def main():
                             "asset": mkt.asset,
                             "side": side,
                             "odds": odds,
+                            "fill_price": result.fill_price or odds,
                             "stake_usdc": result.amount_usdc,
                             "shares": result.shares,
                             "order_id": result.order_id,
