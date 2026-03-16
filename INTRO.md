@@ -19,9 +19,10 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 1. **Scan** (every 3 seconds): Query Gamma API for active 5m/1h markets across all 7 assets (BTC, ETH, SOL, XRP, DOGE, BNB, HYPE)
 2. **Filter**: Find any side (YES or NO) priced at >= `min_odds` (0.97)
 3. **Time gate**: Only buy in the last `max_seconds_left` (15s) to `min_seconds_left` (2s) before market expiry
-4. **Buy**: Place GTC limit order at market price + 0.01 buffer (capped at 0.99), wait up to 8s for fill (polling every 1s)
-5. **Resolve**: Wait for market to settle, redeem winning shares for $1.00 each
-6. **Repeat**
+4. **Price**: Use CLOB `/price` endpoint; fall back to orderbook best ask for hourly markets near expiry (where `/price` returns 0 or 1.0)
+5. **Buy**: Place GTC limit order at market price + 0.01 buffer (capped at 0.99), wait up to 8s for fill (polling every 1s)
+6. **Resolve**: Wait for market to settle, redeem winning shares for $1.00 each
+7. **Repeat**
 
 ### Why it works
 

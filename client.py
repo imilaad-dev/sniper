@@ -112,11 +112,27 @@ def _fetch_market_by_slug(slug: str) -> Optional[dict]:
 
 
 def _get_clob_price(token_id: str) -> float:
+    """Get buy price for a token. Falls back to orderbook best ask if price endpoint
+    returns 0 or >= 1.0 (common for hourly markets near expiry)."""
     try:
         r = _direct.get(f"{CLOB_API}/price",
                          params={"token_id": token_id, "side": "buy"}, timeout=5)
         if r.status_code == 200:
-            return float(r.json().get("price", 0))
+            p = float(r.json().get("price", 0))
+            if 0 < p < 1.0:
+                return p
+    except Exception:
+        pass
+    # Fallback: orderbook best ask (what we'd actually pay to buy)
+    try:
+        r = _direct.get(f"{CLOB_API}/book",
+                         params={"token_id": token_id}, timeout=5)
+        if r.status_code == 200:
+            asks = r.json().get("asks", [])
+            if asks:
+                # Best ask = lowest sell price = cheapest to buy
+                best = min(float(a["price"]) for a in asks)
+                return best
     except Exception:
         pass
     return 0.0

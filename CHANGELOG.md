@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-03-16 — Fix 1h markets never trading: orderbook fallback for price endpoint
+
+### Why
+Investigation revealed zero 1h trades ever executed. The CLOB `/price` endpoint returns `0.00` or `1.00` for hourly markets near expiry, causing them to fail the odds filter (0 < min_odds, 1.0 > max_odds). The orderbook shows real liquidity at 0.97-0.99 but the bot never saw it. The 13 trades previously attributed to 1h were actually 5m trades from before the timeframe field was added.
+
+### What changed
+- **`client.py`**: `_get_clob_price()` now falls back to orderbook best ask when the `/price` endpoint returns 0 or >= 1.0. Fetches `/book` endpoint and returns the lowest ask price. This correctly represents the actual price we'd pay to buy.
+
+---
+
 ## 2026-03-16 — Fix 4 audit issues: fill_price tracking, stale defaults, RPC throttle, dashboard memory
 
 ### Why
