@@ -72,7 +72,7 @@ Runs 24/7 on the same VPS as the Poly Trading Bot at `/opt/sniper/`. Shares the 
 |-----|---------|---------|
 | `min_odds` | 0.90 | Minimum odds to buy (0.90-0.99 = near-settled markets) |
 | `max_odds` | 0.99 | Maximum odds to buy — above 0.99 there's no spread, guaranteed miss |
-| `stake_per_bet` | 5.0 | Base stake per trade in USDC |
+| `stake_per_bet` | 3.0 | Base stake per trade in USDC |
 | `max_stake_pct` | 0.30 | Max stake as fraction of bankroll (30%) |
 | `max_seconds_left` | 15 | Start buying this many seconds before expiry |
 | `min_seconds_left` | 2 | Stop buying — too close to expiry, order won't fill |

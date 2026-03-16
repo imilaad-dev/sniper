@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-03-16 — Lower stake to $3, prioritize lower odds targets
+
+### Why
+With $18 bankroll and $5 stake, `affordable = int(13/5) = 2-3`, cutting valid targets like XRP. Lower stake allows 4-6 parallel orders. Also, targets were fired in scan order (asset loop) — lower odds targets (higher profit) could get cut when slots are limited.
+
+### What changed
+- **`config.json`**: `stake_per_bet` 5.0 → 3.0.
+- **`sniper.py`**: Targets now sorted by odds ascending before capping to `max_targets` — lower odds (higher profit) get priority. Min stake check lowered from $5 to $3.
+- **`client.py`**: Min shares floor lowered from 5 to 1 — CLOB accepts orders as low as 1 share (confirmed by trade history).
+- **`INTRO.md`**: Updated stake config reference.
+
+---
+
 ## 2026-03-16 — Fix 1h markets never trading: orderbook fallback for price endpoint
 
 ### Why

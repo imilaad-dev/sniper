@@ -389,11 +389,14 @@ def main():
                 side, odds, token_id = candidates[0]
 
                 actual_stake = min(stake, max_stake)
-                if actual_stake < 5.0:
+                if actual_stake < 3.0:
                     continue
 
                 targets.append((mkt, side, odds, token_id, actual_stake, secs_left))
                 open_keys.add((mkt.asset, mkt.end_date_iso))  # prevent same-market dups, allow cross-timeframe
+
+            # Sort by odds ascending — lower odds = higher profit per trade = priority
+            targets.sort(key=lambda t: t[2])
 
             if not targets:
                 STOP_EVENT.wait(LOOP_SECONDS)
