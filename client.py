@@ -375,10 +375,10 @@ def place_buy_batch(
                           o.get("amount_usdc", 0), 0, error=str(e)) for o in orders]
 
 
-_REDEEM_LOCK_FILE = "/tmp/polymarket_redeem.lock"
+_REDEEM_LOCK_FILE = "/tmp/sniper_redeem.lock"
 
 def redeem_positions(private_key: str, condition_id: str) -> bool:
-    """Redeem winning tokens for USDC.e. Uses file lock to avoid nonce conflicts with polybot."""
+    """Redeem winning tokens for USDC.e. Uses file lock to avoid nonce conflicts."""
     import fcntl
     lock_fd = None
     try:

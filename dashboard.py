@@ -1,4 +1,4 @@
-#!/opt/polybot/venv/bin/python3
+#!/opt/sniper/venv/bin/python3
 """
 dashboard.py — Sniper Bot Dashboard.
 Runs on port 5001 (polybot dashboard is on 5050 via nginx).

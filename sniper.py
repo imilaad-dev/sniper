@@ -1,4 +1,4 @@
-#!/opt/polybot/venv/bin/python3
+#!/opt/sniper/venv/bin/python3
 """
 sniper.py — 90¢+ Contract Sniper Bot
 Buys contracts at $0.90+ in the final seconds of 5m/1h crypto markets.
@@ -48,8 +48,8 @@ from client import find_snipeable_markets, get_market_result, place_buy_batch, r
 CONFIG_FILE = BOT_DIR / "config.json"
 STATE_FILE  = DATA_DIR / "state.json"
 TRADES_FILE = DATA_DIR / "trades.jsonl"
-WALLET_FILE = Path("/opt/polybot/data/.wallet.json")  # shared wallet
-ENV_FILE    = Path("/opt/polybot/data/.env")
+WALLET_FILE = Path("/opt/sniper/data/.wallet.json")
+ENV_FILE    = Path("/opt/sniper/data/.env")
 
 LOOP_SECONDS = 3  # scan every 3 seconds for speed
 
@@ -172,7 +172,7 @@ def main():
         log.warning("CLOB client pre-warm failed: %s", e)
 
     # Bankroll is trade-based only: total_deposited + pnl_usdc.
-    # No on-chain sync — wallet is shared with polybot.
+    # No on-chain sync — bankroll tracked independently.
     if state["bankroll_usdc"] == 0 and state.get("total_deposited", 0) == 0:
         log.warning("Sniper bankroll is $0. Set total_deposited in state.json to allocate funds.")
 
